@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arnob | Cinematic Portfolio</title>
+    
+    <!-- Premium Fonts: Playfair Display for cinematic headers, Inter for clean body text -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Three.js for 3D Interactive Globe -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        /* =========================================
+           VARIABLES & BASE STYLES
+        ========================================= */
+        :root {
+            --bg-color: #FDFBF7;       
+            --surface: #F4EFE6;        
+            --text-main: #2A241F;      
+            --text-muted: #7A6A5C;     
+            --accent-primary: #C58940; 
+            --accent-secondary: #E5BA73; 
+            --shadow-soft: 0 10px 40px rgba(139, 121, 94, 0.08);
+            --shadow-hover: 0 20px 50px rgba(197, 137, 64, 0.15);
+            --border-light: rgba(139, 121, 94, 0.15);
+            --transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box; scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.7;
+            width: 100vw;
+        }
+
+        h1, h2, h3, .logo { font-family: 'Playfair Display', serif; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* SCROLL PROGRESS BAR */
+        #scroll-progress {
+            position: fixed; top: 0; left: 0; width: 0%; height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            z-index: 10000; transition: width 0.1s ease;
+        }
+
+        /* =========================================
+           NAVBAR
+        ========================================= */
+        .navbar {
+            position: fixed; top: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 25px 8%;
+            background: rgba(253, 251, 247, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+        .logo { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; color: var(--text-main); }
+        .nav-links { list-style: none; display: flex; gap: 35px; }
+        .nav-links a {
+            color: var(--text-main); text-decoration: none;
+            font-weight: 500; font-size: 0.95rem; transition: 0.3s;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: ''; position: absolute; width: 0; height: 2px;
+            bottom: -5px; left: 0; background: var(--accent-primary); transition: 0.3s;
+        }
+        .nav-links a:hover::after { width: 100%; }
+        .hamburger { display: none; cursor: pointer; font-size: 1.5rem; color: var(--text-main); }
+
+        /* =========================================
+           HERO SECTION & 3D GLOBE
+        ========================================= */
+        .hero-section {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 120px 8% 60px;
+            gap: 50px;
+        }
+        .hero-text { flex: 1; max-width: 650px; }
+        .hero-text .identity-line { 
+            color: var(--accent-primary); font-size: 1.1rem; font-weight: 600; 
+            letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase;
+        }
+        .hero-text h1 { font-size: 4.5rem; line-height: 1.1; margin-bottom: 25px; color: var(--text-main); }
+        .hero-text p { font-size: 1.15rem; color: var(--text-muted); margin-bottom: 35px; max-width: 90%; }
+        
+        .btn {
+            display: inline-flex; align-items: center; gap: 12px;
+            padding: 16px 35px; border-radius: 40px; font-weight: 500;
+            text-decoration: none; transition: var(--transition);
+            border: none; cursor: pointer; font-size: 1.05rem;
+            font-family: 'Inter', sans-serif; letter-spacing: 0.5px;
+        }
+        .primary-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #fff; box-shadow: 0 10px 20px rgba(197, 137, 64, 0.25);
+        }
+        .primary-btn:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(197, 137, 64, 0.4); }
+
+        /* Responsive 3D Canvas Container */
+        .hero-visual { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
+        #globe-canvas-container {
+            width: 100%; 
+            max-width: 450px;
+            aspect-ratio: 1 / 1; 
+            position: relative;
+            cursor: grab;
+            margin: 0 auto;
+        }
+        #globe-canvas-container:active { cursor: grabbing; }
+
+        /* =========================================
+           GENERAL SECTIONS
+        ========================================= */
+        section { padding: 100px 8%; position: relative; }
+        .section-title { text-align: center; font-size: 3rem; margin-bottom: 70px; color: var(--text-main); }
+        .section-subtitle { text-align: center; font-family: 'Inter', sans-serif; color: var(--text-muted); margin-top: -50px; margin-bottom: 70px; }
+
+        /* =========================================
+           DOCUMENTARY TIMELINE (MY JOURNEY)
+        ========================================= */
+        .timeline { position: relative; max-width: 1000px; margin: 0 auto; }
+        .timeline::after {
+            content: ''; position: absolute; width: 4px; background: var(--border-light);
+            top: 0; bottom: 0; left: 50%; margin-left: -2px; border-radius: 4px;
+        }
+        .timeline-item {
+            padding: 10px 40px; position: relative; background-color: inherit; width: 50%;
+            opacity: 0; transform: translateY(40px); transition: var(--transition);
+        }
+        .timeline-item.show-element { opacity: 1; transform: translateY(0); }
+        
+        .timeline-item:nth-child(odd) { left: 0; text-align: right; }
+        .timeline-item:nth-child(even) { left: 50%; }
+        
+        .timeline-dot {
+            width: 20px; height: 20px; background: var(--accent-primary);
+            position: absolute; top: 30px; border-radius: 50%; z-index: 10;
+            box-shadow: 0 0 15px rgba(197, 137, 64, 0.5);
+        }
+        .timeline-item:nth-child(odd) .timeline-dot { right: -10px; }
+        .timeline-item:nth-child(even) .timeline-dot { left: -10px; }
+
+        .timeline-content {
+            padding: 30px; background: var(--surface); border-radius: 20px;
+            box-shadow: var(--shadow-soft); border: 1px solid var(--border-light);
+        }
+        .timeline-content h3 { font-size: 1.5rem; color: var(--text-main); margin-bottom: 10px; }
+        .timeline-content .year { font-weight: 600; color: var(--accent-primary); margin-bottom: 15px; display: block; font-family: 'Inter', sans-serif; }
+        .timeline-content p { color: var(--text-muted); font-size: 1.05rem; }
+
+        /* =========================================
+           ABOUT SECTION & PHOTO COLLAGE (SWIPEABLE)
+        ========================================= */
+        .about-grid {
+            display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px; align-items: center;
+        }
+        .collage-container {
+            position: relative; width: 100%; height: 500px; cursor: pointer;
+        }
+        .collage-hint {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(253, 251, 247, 0.85); color: var(--accent-primary);
+            padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+            z-index: 10; box-shadow: var(--shadow-soft); pointer-events: none;
+            opacity: 0; transition: 0.5s ease;
+        }
+        .collage-container:hover .collage-hint { opacity: 1; }
+
+        .collage-img {
+            position: absolute; border-radius: 15px; box-shadow: var(--shadow-soft);
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1); object-fit: cover;
+            border: 6px solid var(--bg-color);
+        }
+        .img-main { width: 75%; height: 80%; top: 0; left: 0; z-index: 2; opacity: 1; }
+        .img-secondary { width: 65%; height: 65%; bottom: 0; right: 0; z-index: 1; opacity: 0.7; }
+        
+        /* Desktop specific hover animation */
+        @media(min-width: 901px) {
+            .collage-container:hover .img-main { transform: scale(0.98) translateY(-5px); }
+            .collage-container:hover .img-secondary { opacity: 1; transform: scale(1.05) translateX(-10px); }
+        }
+
+        .about-text h3 { font-size: 2.2rem; margin-bottom: 20px; }
+        .about-text p { color: var(--text-muted); font-size: 1.15rem; margin-bottom: 25px; }
+        
+        .interactive-tags { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+        .interactive-tag {
+            background: transparent; color: var(--text-main);
+            padding: 10px 22px; border-radius: 30px; font-size: 0.95rem;
+            font-weight: 500; cursor: pointer; border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+        .interactive-tag:hover {
+            background: var(--surface); border-color: var(--accent-primary); color: var(--accent-primary);
+        }
+
+        /* =========================================
+           SKILLS SECTION
+        ========================================= */
+        .skills-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;
+        }
+        .skill-card {
+            background: var(--surface); border-radius: 20px; padding: 50px 30px;
+            text-align: center; box-shadow: var(--shadow-soft); border: 1px solid var(--border-light);
+            transition: var(--transition); position: relative; overflow: hidden;
+        }
+        .skill-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            transform: scaleX(0); transition: transform 0.4s ease; transform-origin: left;
+        }
+        .skill-card:hover::before { transform: scaleX(1); }
+        .skill-card:hover { transform: translateY(-10px); box-shadow: var(--shadow-hover); }
+        .skill-card i { font-size: 3rem; color: var(--accent-secondary); margin-bottom: 25px; }
+
+        /* =========================================
+           PROJECTS SECTION
+        ========================================= */
+        .projects-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;
+        }
+        .project-card {
+            background: var(--surface); border-radius: 20px; overflow: hidden;
+            box-shadow: var(--shadow-soft); border: 1px solid var(--border-light);
+            transition: var(--transition); cursor: pointer; display: flex; flex-direction: column;
+        }
+        .project-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
+        .project-icon-area {
+            height: 220px; background: linear-gradient(135deg, rgba(197, 137, 64, 0.1), rgba(229, 186, 115, 0.2));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 4.5rem; color: var(--accent-primary); position: relative;
+        }
+        .project-info { padding: 35px; flex-grow: 1; }
+        .project-info h3 { margin-bottom: 12px; font-size: 1.6rem; }
+        .project-info p { color: var(--text-muted); font-size: 1rem; margin-bottom: 20px; }
+        .tech-stack span {
+            color: var(--accent-primary); font-size: 0.85rem; font-weight: 600; margin-right: 12px;
+            background: rgba(197, 137, 64, 0.1); padding: 5px 12px; border-radius: 20px; display: inline-block; margin-bottom: 5px;
+        }
+
+        /* =========================================
+           MODALS (PROJECT SLIDER & SKILLS)
+        ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(26, 22, 19, 0.8); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; opacity: 0; pointer-events: none; transition: var(--transition);
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-content {
+            background: var(--bg-color); width: 95%; max-width: 700px;
+            border-radius: 20px; padding: 40px; text-align: center; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            transform: translateY(40px) scale(0.95); transition: var(--transition);
+            position: relative; overflow: hidden;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
+        .modal-close {
+            position: absolute; top: 20px; right: 25px; font-size: 1.8rem;
+            color: var(--text-main); cursor: pointer; transition: 0.2s; z-index: 10;
+        }
+        .modal-close:hover { color: var(--accent-primary); }
+        
+        /* Image Slider Elements */
+        .slider-container { position: relative; width: 100%; height: 350px; margin-bottom: 25px; border-radius: 15px; overflow: hidden; background: #e0d8cc; }
+        .slider-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 0.5s ease; }
+        .slider-img.active { opacity: 1; }
+        .slider-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(253, 251, 247, 0.8); color: var(--text-main); border: none;
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 5;
+            font-size: 1.2rem; transition: 0.3s;
+        }
+        .slider-btn:hover { background: var(--accent-primary); color: white; }
+        .slider-prev { left: 15px; }
+        .slider-next { right: 15px; }
+
+        .modal-title { font-size: 2rem; margin-bottom: 15px; color: var(--text-main); }
+        .modal-desc { font-size: 1.1rem; color: var(--text-muted); line-height: 1.7; }
+
+        /* =========================================
+           MEDIA & YOUTUBE SECTION
+        ========================================= */
+        .media-container {
+            background: var(--surface); border-radius: 30px; padding: 80px 60px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center;
+            border: 1px solid var(--border-light);
+        }
+        .media-photo img { width: 100%; border-radius: 20px; box-shadow: var(--shadow-soft); }
+
+        /* =========================================
+           CONTACT SECTION
+        ========================================= */
+        .contact-links { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; margin-top: 40px; }
+        .social-box {
+            background: var(--bg-color); padding: 20px 45px; border-radius: 40px;
+            display: flex; align-items: center; gap: 15px; text-decoration: none;
+            color: var(--text-main); font-weight: 500; font-size: 1.1rem;
+            box-shadow: var(--shadow-soft); transition: var(--transition); border: 1px solid var(--border-light);
+        }
+        .social-box i { font-size: 1.5rem; color: var(--accent-primary); }
+        .social-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: var(--accent-primary); }
+
+        footer { text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.95rem; font-family: 'Inter', sans-serif; }
+
+        /* =========================================
+           ANIMATIONS & RESPONSIVENESS (MOBILE FIXES)
+        ========================================= */
+        .hidden-element { opacity: 0; transform: translateY(50px); transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); }
+        .show-element { opacity: 1; transform: translateY(0); }
+
+        @media(max-width: 900px) {
+            .hero-section { padding: 110px 5% 40px; flex-direction: column; text-align: center; gap: 30px; }
+            .hero-text h1 { font-size: 3.2rem; }
+            
+            /* GLOBE FIX FOR VERTICAL MOBILE */
+            #globe-canvas-container {
+                width: 100%; 
+                max-width: 320px; /* Safe size ensures it never cuts off edges */
+                aspect-ratio: 1 / 1;
+            }
+
+            .timeline::after { left: 30px; }
+            .timeline-item { width: 100%; padding-left: 80px; padding-right: 0; text-align: left !important; }
+            .timeline-item:nth-child(even), .timeline-item:nth-child(odd) { left: 0; }
+            .timeline-dot { left: 20px !important; right: auto !important; }
+            
+            /* ABOUT PHOTO COLLAGE MOBILE FIX */
+            .about-grid { flex-direction: column; text-align: center; }
+            .collage-container { height: 350px; max-width: 400px; margin: 0 auto 30px; }
+            .collage-hint { opacity: 1; display: block; } /* Always show hint on mobile */
+            .img-main { width: 75%; height: 85%; top: 0; left: 0; display: block; }
+            .img-secondary { width: 70%; height: 75%; bottom: 0; right: 0; display: block; opacity: 0.8; }
+            
+            /* INFINITE HORIZON PHOTO FIX */
+            .media-container { 
+                display: flex; 
+                flex-direction: column-reverse; /* Puts photo on top of text */
+                padding: 40px 20px; text-align: center; 
+            }
+            .media-photo { margin-bottom: 10px; width: 100%; max-width: 450px; margin: 0 auto 20px; }
+        }
+        
+        @media(max-width: 768px) {
+            section { padding: 70px 6%; }
+            .nav-links {
+                position: absolute; top: 100%; left: 0; width: 100%; background: var(--bg-color);
+                flex-direction: column; padding: 30px 0; text-align: center;
+                box-shadow: 0 15px 20px rgba(0,0,0,0.05); display: none; gap: 20px;
+            }
+            .nav-links.active { display: flex; }
+            .hamburger { display: block; }
+            .slider-container { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SCROLL PROGRESS -->
+    <div id="scroll-progress"></div>
+
+    <!-- NAVBAR -->
+    <nav class="navbar" id="navbar">
+        <div class="logo">J.M. ARNOB</div>
+        <ul class="nav-links">
+            <li><a href="#hero">Home</a></li>
+            <li><a href="#journey">Journey</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+        <div class="hamburger"><i class="fas fa-bars"></i></div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section id="hero" class="hero-section">
+        <div class="hero-text hidden-element">
+            <div class="identity-line">IoT Developer | Cybersecurity Specialist</div>
+            <h1>Architecting the <br><span class="gradient-text">Future</span></h1>
+            <p>From exploring the theoretical mechanics of the universe to physically wiring the future. I build intelligent hardware systems today, to secure the networks of tomorrow.</p>
+            <a href="#journey" class="btn primary-btn">Begin the Story</a>
+        </div>
+        <div class="hero-visual hidden-element">
+            <!-- Responsive 3D Canvas -->
+            <div id="globe-canvas-container"></div>
+        </div>
+    </section>
+
+    <!-- MY JOURNEY (DOCUMENTARY TIMELINE) -->
+    <section id="journey">
+        <h2 class="section-title hidden-element">The <span class="gradient-text">Journey</span></h2>
+        <p class="section-subtitle hidden-element">A documented evolution of logic, hardware, and security.</p>
+        
+        <div class="timeline">
+            <div class="timeline-item hidden-element">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="year">Phase 01: The Spark</span>
+                    <h3>Curiosity & Physics</h3>
+                    <p>It started with a deep fascination for the cosmos—black holes, relativity, and how systems govern reality. This theoretical curiosity laid the foundation for my deeply analytical mindset.</p>
+                </div>
+            </div>
+            <div class="timeline-item hidden-element">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="year">Phase 02: Tactile Logic</span>
+                    <h3>Hardware Engineering</h3>
+                    <p>Theory wasn't enough. I needed to build. Transitioning into microcontrollers like Arduino and motor drivers, I began bringing code into the physical world, constructing custom robotic vehicles.</p>
+                </div>
+            </div>
+            <div class="timeline-item hidden-element">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="year">Phase 03: The Network</span>
+                    <h3>Internet of Things (IoT)</h3>
+                    <p>I realized isolated hardware was limited. Integrating ESP8266 and ESP32 chips, I connected my physical builds to the cloud. I engineered smart room systems operating seamlessly via Alexa and Google APIs.</p>
+                </div>
+            </div>
+            <div class="timeline-item hidden-element">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="year">Phase 04: The Shield</span>
+                    <h3>Future Cybersecurity</h3>
+                    <p>As my environments became connected, I saw the vulnerabilities. My ultimate goal crystallized: mastering network protocols and encryption to secure the connected infrastructure of the future.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about">
+        <div class="about-grid hidden-element">
+            <!-- Interactive Photo Stack Container -->
+            <div class="collage-container" id="interactive-collage">
+                <span class="collage-hint">Tap / Swipe to view</span>
+                <img src="https://i.postimg.cc/JhnXmxS5/20260223-145942-2.jpg" class="collage-img img-main" alt="Arnob Portrait">
+                <img src="https://i.postimg.cc/bYmV33kb/IMG-20260306-164329-727(1).jpg" class="collage-img img-secondary" alt="Arnob Profile 2">
+            </div>
+            <div class="about-text">
+                <h3>Science Major @ Govt. Sundarban Adarsh College</h3>
+                <p>I view technology as applied physics. My academic background gives me the structural discipline to tackle complex engineering problems, whether it's managing database systems in SQL, scripting logic in C, or soldering a circuit board.</p>
+                
+                <h4 style="margin-top: 30px; font-family: 'Inter', sans-serif;">Linguistic Capabilities:</h4>
+                <div class="interactive-tags">
+                    <span class="interactive-tag" data-type="skill" data-title="English" data-desc="Highly proficient. Completely comfortable speaking, reading, writing, and consuming high-level technical documentation.">English</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Hindi" data-desc="Expert proficiency. I can fluently read, write, and converse, allowing me to connect with a broader technological community." data-img="https://i.postimg.cc/YSxhQ4Zq/Language.webp">Hindi</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Bengali" data-desc="Native language. Fluent in all aspects.">Bengali</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Sanskrit" data-desc="Fascinated by its ancient roots, I have a foundational ~20% understanding of its vocabulary.">Sanskrit</span>
+                    <span class="interactive-tag" data-type="skill" data-title="German" data-desc="Currently actively acquiring basic conversational structures.">German</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SKILLS SECTION -->
+    <section id="skills">
+        <h2 class="section-title hidden-element">Technical <span class="gradient-text">Arsenal</span></h2>
+        
+        <div class="skills-grid hidden-element">
+            <div class="skill-card">
+                <i class="fas fa-microchip"></i>
+                <h3 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 20px;">Hardware & IoT</h3>
+                <div class="interactive-tags" style="justify-content: center;">
+                    <span class="interactive-tag" data-type="skill" data-title="ESP8266 & ESP32" data-desc="Highly capable Wi-Fi microchips used extensively for my smart home and IoT architectures.">ESP Core</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Arduino Uno" data-desc="The backbone of my rapid prototyping and robotic logic testing.">Arduino</span>
+                </div>
+            </div>
+
+            <div class="skill-card">
+                <i class="fas fa-terminal"></i>
+                <h3 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 20px;">Software Logic</h3>
+                <div class="interactive-tags" style="justify-content: center;">
+                    <span class="interactive-tag" data-type="skill" data-title="C Programming" data-desc="Foundation of my embedded systems engineering." data-img="https://i.postimg.cc/j5LnKxgF/C.jpg">C Lang</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Python" data-desc="Used for automation, scripting, and backend integrations." data-img="https://i.postimg.cc/WtR2BjCS/Python.jpg">Python</span>
+                    <span class="interactive-tag" data-type="skill" data-title="SQL Database" data-desc="Skilled in relational schema design and complex queries.">SQL</span>
+                </div>
+            </div>
+
+            <div class="skill-card">
+                <i class="fas fa-shield-halved"></i>
+                <h3 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 20px;">Security & Media</h3>
+                <div class="interactive-tags" style="justify-content: center;">
+                    <span class="interactive-tag" data-type="skill" data-title="Cyber Security" data-desc="Analyzing network protocols and system vulnerabilities to prepare for a career in digital defense.">Security</span>
+                    <span class="interactive-tag" data-type="skill" data-title="Video Production" data-desc="Crafting high-quality documentary content for Infinite Horizons.">Media Creation</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROJECTS SECTION -->
+    <section id="projects">
+        <h2 class="section-title hidden-element">Architected <span class="gradient-text">Systems</span></h2>
+        
+        <div class="projects-grid hidden-element">
+            
+            <!-- Project 1 -->
+            <div class="project-card" data-type="project" data-title="IoT Smart Room Architecture" data-desc="A fully automated smart home system utilizing ESP8266 microcontrollers. It seamlessly interfaces with Blynk IoT, SinricPro, Google Home, and Alexa APIs to provide physical and vocal control over household environments." data-images="https://i.postimg.cc/3rGWZbPq/Smart-Home.jpg,https://i.postimg.cc/PqcrWmKq/Smart-Home-Technologies.jpg,https://i.postimg.cc/mgpb4QvB/amazon-echo-dot-review-lead-sq-jpg-666ac7720b34f.jpg">
+                <div class="project-icon-area"><i class="fas fa-network-wired"></i></div>
+                <div class="project-info">
+                    <h3>IoT Smart Room</h3>
+                    <p>Cloud-integrated physical automation.</p>
+                    <div class="tech-stack"><span>ESP8266</span><span>Alexa API</span><span>IoT</span></div>
+                </div>
+            </div>
+
+            <!-- Project 2 -->
+            <div class="project-card" data-type="project" data-title="Wireless Recon Vehicle" data-desc="A custom-engineered hardware car utilizing NodeMCU controllers and L298N motor drivers. Designed for precise spatial navigation operated remotely via a custom Wi-Fi interface." data-images="https://i.postimg.cc/0yFLZcgr/Car.jpg">
+                <div class="project-icon-area"><i class="fas fa-robot"></i></div>
+                <div class="project-info">
+                    <h3>Wireless Vehicle</h3>
+                    <p>Tactile robotics and motor bridging.</p>
+                    <div class="tech-stack"><span>NodeMCU</span><span>C++</span><span>Robotics</span></div>
+                </div>
+            </div>
+
+            <!-- Project 3 -->
+            <div class="project-card" data-type="project" data-title="Data & Logic Flow" data-desc="Academic implementations demonstrating rigorous computer science fundamentals, including dynamic memory allocation in C and relational database architecture utilizing SQL." data-images="https://i.postimg.cc/j5LnKxgF/C.jpg,https://i.postimg.cc/WtR2BjCS/Python.jpg">
+                <div class="project-icon-area"><i class="fas fa-server"></i></div>
+                <div class="project-info">
+                    <h3>DBMS & Core Logic</h3>
+                    <p>Backend data structuring and algorithms.</p>
+                    <div class="tech-stack"><span>C</span><span>SQL</span><span>Python</span></div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- MEDIA SECTION -->
+    <section id="media">
+        <div class="media-container hidden-element">
+            <div class="media-text">
+                <h2 style="font-size: 2.8rem; margin-bottom: 20px;">Infinite <span class="gradient-text">Horizons</span></h2>
+                <p style="color: var(--text-muted); font-size: 1.15rem; margin-bottom: 30px;">Beyond code, I am a storyteller. I produce high-quality, short-form documentaries exploring the vast mysteries of deep space and theoretical science on YouTube.</p>
+                <a href="https://youtube.com/@infinitehorizons-en?si=jBkH_sxrMqoBVaaB" target="_blank" class="btn" style="background: #e63946; color: white; box-shadow: 0 10px 20px rgba(230,57,70,0.25);">
+                    <i class="fab fa-youtube"></i> View Channel
+                </a>
+            </div>
+            <div class="media-photo">
+                <img src="https://i.postimg.cc/NMRjwrGg/20260223-100657(1).jpg" alt="Infinite Horizons Set">
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section id="contact">
+        <h2 class="section-title hidden-element">Establish <span class="gradient-text">Connection</span></h2>
+        <p class="section-subtitle hidden-element">Available for collaboration in IoT development and security research.</p>
+        
+        <div class="contact-links hidden-element">
+            <a href="mailto:arnobmondol235@gmail.com" class="social-box">
+                <i class="fas fa-envelope"></i> Email Signal
+            </a>
+            <a href="https://www.facebook.com/jotirmoy.mondol.arnab" target="_blank" class="social-box">
+                <i class="fab fa-facebook" style="color: #1877f2;"></i> Facebook
+            </a>
+            <a href="https://instagram.com/_vrind_aeterna_" target="_blank" class="social-box">
+                <i class="fab fa-instagram" style="color: #e1306c;"></i> Instagram
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Arnob. Engineered with precision and designed with purpose.</p>
+    </footer>
+
+    <!-- CINEMATIC MODAL POPUP -->
+    <div class="modal-overlay" id="dynamic-modal">
+        <div class="modal-content">
+            <i class="fas fa-times modal-close" id="close-modal"></i>
+            
+            <!-- Slider Area (Only visible if images exist) -->
+            <div class="slider-container" id="modal-slider-container" style="display: none;">
+                <button class="slider-btn slider-prev" id="slide-prev"><i class="fas fa-chevron-left"></i></button>
+                <div id="slider-images-wrapper"></div>
+                <button class="slider-btn slider-next" id="slide-next"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <h2 class="modal-title" id="modal-title">Title</h2>
+            <p class="modal-desc" id="modal-desc">Description</p>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            /* ==============================================
+               1. CINEMATIC 3D GLOBE (RESPONSIVE & OPTIMIZED)
+            ============================================== */
+            const container = document.getElementById('globe-canvas-container');
+            const scene = new THREE.Scene();
+            
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 2.6; 
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; 
+            controls.dampingFactor = 0.03; 
+            controls.enablePan = false;
+            controls.enableZoom = false; 
+            controls.autoRotate = true;  
+            controls.autoRotateSpeed = 0.8; 
+
+            const globeGroup = new THREE.Group();
+            scene.add(globeGroup);
+
+            const baseGeometry = new THREE.SphereGeometry(1, 48, 48); 
+            const baseMaterial = new THREE.MeshStandardMaterial({
+                color: 0xFDFBF7, emissive: 0xC58940, emissiveIntensity: 0.15,
+                roughness: 0.4, metalness: 0.6
+            });
+            const baseGlobe = new THREE.Mesh(baseGeometry, baseMaterial);
+            globeGroup.add(baseGlobe);
+
+            const wireframeGeometry = new THREE.SphereGeometry(1.02, 24, 24); 
+            const wireframeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xC58940, wireframe: true, transparent: true, opacity: 0.25
+            });
+            const wireframeGlobe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+            globeGroup.add(wireframeGlobe);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffebd6, 1.5);
+            directionalLight.position.set(5, 3, 5);
+            scene.add(directionalLight);
+
+            function animateGlobe() {
+                requestAnimationFrame(animateGlobe);
+                controls.update(); 
+                renderer.render(scene, camera);
+            }
+            animateGlobe();
+
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const width = entry.contentRect.width;
+                    const height = entry.contentRect.height;
+                    renderer.setSize(width, height);
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                }
+            });
+            resizeObserver.observe(container);
+
+            /* ==============================================
+               2. SCROLL PROGRESS & NAVBAR STYLING
+            ============================================== */
+            const scrollProgress = document.getElementById("scroll-progress");
+            const navbar = document.getElementById("navbar");
+
+            window.addEventListener("scroll", () => {
+                const scrollTop = document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (scrollTop / scrollHeight) * 100;
+                scrollProgress.style.width = scrolled + "%";
+
+                if(scrollTop > 50) {
+                    navbar.style.boxShadow = "0 10px 30px rgba(139, 121, 94, 0.1)";
+                } else {
+                    navbar.style.boxShadow = "none";
+                }
+            });
+
+            /* ==============================================
+               3. MOBILE MENU
+            ============================================== */
+            const hamburger = document.querySelector(".hamburger");
+            const navLinks = document.querySelector(".nav-links");
+            hamburger.addEventListener("click", () => {
+                navLinks.classList.toggle("active");
+                hamburger.querySelector("i").className = navLinks.classList.contains("active") ? "fas fa-times" : "fas fa-bars";
+            });
+            document.querySelectorAll(".nav-links a").forEach(link => {
+                link.addEventListener("click", () => {
+                    navLinks.classList.remove("active");
+                    hamburger.querySelector("i").className = "fas fa-bars";
+                });
+            });
+
+            /* ==============================================
+               4. CINEMATIC SCROLL REVEAL
+            ============================================== */
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("show-element");
+                    }
+                });
+            }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+
+            document.querySelectorAll('.hidden-element').forEach(el => observer.observe(el));
+
+            /* ==============================================
+               5. INTERACTIVE COLLAGE PHOTO SWAP (TAP & SWIPE)
+            ============================================== */
+            const collageContainer = document.getElementById('interactive-collage');
+            const imgMain = document.querySelector('.img-main');
+            const imgSecondary = document.querySelector('.img-secondary');
+            let isMainOnTop = true;
+
+            function swapPhotos() {
+                if(isMainOnTop) {
+                    imgMain.style.zIndex = "1";
+                    imgSecondary.style.zIndex = "2";
+                    imgMain.style.transform = "scale(0.95)";
+                    imgSecondary.style.transform = "scale(1.05)";
+                    imgMain.style.opacity = "0.6";
+                    imgSecondary.style.opacity = "1";
+                } else {
+                    imgMain.style.zIndex = "2";
+                    imgSecondary.style.zIndex = "1";
+                    imgMain.style.transform = "scale(1)";
+                    imgSecondary.style.transform = "scale(1)";
+                    imgMain.style.opacity = "1";
+                    imgSecondary.style.opacity = "0.8";
+                }
+                isMainOnTop = !isMainOnTop;
+            }
+
+            // Click to swap
+            collageContainer.addEventListener('click', swapPhotos);
+
+            // Touch Swipe logic for mobile scrolling feel
+            let touchStartX = 0;
+            collageContainer.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: true});
+            
+            collageContainer.addEventListener('touchend', e => {
+                let touchEndX = e.changedTouches[0].screenX;
+                // If swiped left or right more than 40px
+                if(Math.abs(touchEndX - touchStartX) > 40) {
+                    swapPhotos();
+                }
+            }, {passive: true});
+
+            /* ==============================================
+               6. DYNAMIC MODAL & PROJECT SLIDER
+            ============================================== */
+            const modal = document.getElementById('dynamic-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalDesc = document.getElementById('modal-desc');
+            const closeBtn = document.getElementById('close-modal');
+            
+            const sliderContainer = document.getElementById('modal-slider-container');
+            const sliderWrapper = document.getElementById('slider-images-wrapper');
+            const btnPrev = document.getElementById('slide-prev');
+            const btnNext = document.getElementById('slide-next');
+            
+            let currentSlide = 0;
+            let slideImages =[];
+
+            function updateSlider() {
+                const imgs = sliderWrapper.querySelectorAll('.slider-img');
+                imgs.forEach((img, idx) => {
+                    if(idx === currentSlide) img.classList.add('active');
+                    else img.classList.remove('active');
+                });
+            }
+
+            btnPrev.addEventListener('click', () => {
+                if(slideImages.length <= 1) return;
+                currentSlide = (currentSlide === 0) ? slideImages.length - 1 : currentSlide - 1;
+                updateSlider();
+            });
+
+            btnNext.addEventListener('click', () => {
+                if(slideImages.length <= 1) return;
+                currentSlide = (currentSlide === slideImages.length - 1) ? 0 : currentSlide + 1;
+                updateSlider();
+            });
+
+            function openModal(title, desc, imagesString) {
+                modalTitle.innerText = title;
+                modalDesc.innerText = desc;
+                sliderWrapper.innerHTML = '';
+                
+                slideImages = imagesString ? imagesString.split(',') : [];
+
+                if(slideImages.length > 0 && slideImages[0] !== "") {
+                    sliderContainer.style.display = 'block';
+                    slideImages.forEach((src, index) => {
+                        const img = document.createElement('img');
+                        img.src = src.trim();
+                        img.className = 'slider-img';
+                        if(index === 0) img.classList.add('active');
+                        sliderWrapper.appendChild(img);
+                    });
+                    
+                    if(slideImages.length === 1) {
+                        btnPrev.style.display = 'none';
+                        btnNext.style.display = 'none';
+                    } else {
+                        btnPrev.style.display = 'block';
+                        btnNext.style.display = 'block';
+                    }
+                } else {
+                    sliderContainer.style.display = 'none';
+                }
+                modal.classList.add('active');
+            }
+
+            document.querySelectorAll('.project-card, .interactive-tag').forEach(el => {
+                el.addEventListener('click', () => {
+                    const title = el.getAttribute('data-title');
+                    const desc = el.getAttribute('data-desc');
+                    const images = el.getAttribute('data-images') || el.getAttribute('data-img') || '';
+                    if(title && desc) openModal(title, desc, images);
+                });
+            });
+
+            closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>
